@@ -446,6 +446,12 @@ class AutoHelper(AutoBase):
         :return:
         """
         self.screenshot()
+        actions, result = self.template.get_actions_on_new_stage_intro2(self.img)
+        if result:
+            self.log.add_log('found [ON_NEW_STAGE_INTRO 2] and do actions')
+            self.do_first_action(actions, result)
+            raise ResetRepeatCountException()
+
         actions, result = self.template.get_actions_on_new_stage_intro(self.img)
         if result:
             self.log.add_log('found [ON_NEW_STAGE_INTRO] and do actions')

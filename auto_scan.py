@@ -233,6 +233,8 @@ class AutoHelper(AutoBase):
         # Step 2. find factory to upgrade
         self.find_factory_from_bottom_to_top(cnt)
 
+        self.check_new_stage_found_go_next_stage_button()
+
     def run(self):
 
         self.dm.stop_app()
