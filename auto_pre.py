@@ -1,5 +1,6 @@
 import math
 import random
+import shutil
 from time import sleep
 from typing import Tuple, List, Dict
 
@@ -203,7 +204,7 @@ class AutoHelper(AutoBase):
         self.curr_factory_y = y
         self.curr_factory_offset = offset
 
-    def adjust_factory_offset(self):
+    def adjust_factory_offset(self, open_box=False):
 
         self.log.add_log(f'\t[O] adjust_factory_offset current offset={self.curr_offset_y}, factory offset={self.curr_factory_offset}')
         if self.curr_offset_y > self.curr_factory_offset:
@@ -213,6 +214,8 @@ class AutoHelper(AutoBase):
             self.log.add_log(f'[adjust_factory_offset] : {self.curr_offset_y} -> {self.curr_offset_y+1} / Scroll Down')
             self.curr_offset_y += 1
             self.dm.move_to_down_1step()
+            if open_box:
+                self.open_boxes()
 
     # Step 3. open boxes, upgrade skills
     def open_boxes(self):
@@ -256,12 +259,11 @@ class AutoHelper(AutoBase):
                 if not with_box_open:
                     repeat = math.ceil(max_level / 50)
 
-                if is_last and 1 < cnt[0] < 5:
-                    self.open_active_skill()
-
                 self.log.add_log(f'\t[O] Upgrade Repeat = {repeat} / {fn.__name__}')
-                for _ in range(repeat):
-                    self.do_first_action(actions, result)
+                self.do_first_action(actions, result, duration_multiply=repeat)
+
+                if is_last and 2 == cnt[0]:
+                    self.open_active_skill()
 
                 self.screenshot()
                 self.dm.click(x=self.curr_factory_x, y=self.curr_factory_y)
@@ -276,12 +278,13 @@ class AutoHelper(AutoBase):
 
         self.log.add_log(f'\t[X] Not found coin.')
 
-    def do_upgrade_factory_unlock(self):
+    def do_upgrade_factory_unlock(self, with_box_open):
         self.log.add_log('\t[do_upgrade_factory_unlock]')
         actions, result = self.template.get_actions_buy_food_factory_coin(self.img)
         if result:
             self.do_first_action(actions, result)
-            self.open_boxes_and_upgrade_skill()
+            if with_box_open:
+                self.open_boxes_and_upgrade_skill()
             raise ResetRepeatCountException()
 
     def is_factory_opened(self):
@@ -342,7 +345,7 @@ class AutoHelper(AutoBase):
                     # upgrade window off
                     self.watching_google_ad()
                     self.init_screen_pos()
-                    self.adjust_factory_offset()
+                    self.adjust_factory_offset(with_box_open)
 
             if not self.click_factory(tobe_open=True):
                 self.log.add_log('\tExit. do_upgrade_factory_open / Not Found click_factory ')
@@ -365,7 +368,7 @@ class AutoHelper(AutoBase):
             if self.template.has_unlock_factory_text(self.img):
                 # 처음 open
                 self.log.add_log('\t[O] 잠금 해제')
-                self.do_upgrade_factory_unlock()
+                self.do_upgrade_factory_unlock(with_box_open=with_box_open)
             else:
                 self.log.add_log('\t[X] has_unlock_factory_text')
 
@@ -427,7 +430,7 @@ class AutoHelper(AutoBase):
             sx, sy, ex, ey = factory['pos']
             self.log.add_log(f'First/Last Factory Upgrade ({sx}, {sy}, {ex}, {ey}), offset={offset}')
             self.init_factory_pos(sx=sx, sy=sy, ex=ex, ey=ey, offset=offset)
-            self.adjust_factory_offset()
+            self.adjust_factory_offset(with_box_open)
             cnt = [0]
             if not self.do_upgrade_factory_open(max_level=self.max_level, with_box_open=with_box_open, is_last=is_last, cnt=cnt):
                 self.log.add_log(f'Failed to do_upgrade_factory_open')
@@ -445,6 +448,7 @@ class AutoHelper(AutoBase):
         new stage - step 3.
         :return:
         """
+        sleep(1)
         self.screenshot()
         actions, result = self.template.get_actions_on_new_stage_intro2(self.img)
         if result:
@@ -470,6 +474,9 @@ class AutoHelper(AutoBase):
             self.log.add_log('found [BUY_NEXT_STAGE] and do actions')
             self.do_first_action(actions, result)
             sleep(2)
+            if self.max_level == 250:
+                sleep(5)
+
             raise ExitRepeatException()
 
     def check_new_stage_found_go_next_stage_button(self):
@@ -529,6 +536,10 @@ class AutoHelper(AutoBase):
         self.city.load_cities()
 
         while True:
+            work_path = self.log_filepath().parent
+            if work_path.exists():
+                shutil.rmtree(work_path)
+                
             if not self.main_logic():
                 break
 

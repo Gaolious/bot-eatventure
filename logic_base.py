@@ -61,7 +61,7 @@ class AutoBase:
             return (result.left + result.right) // 2, (result.top + result.bottom) // 2
         return 0, 0
 
-    def do_action(self, act : Action, result: MatchingResult, how_many=-1):
+    def do_action(self, act : Action, result: MatchingResult, how_many=-1, duration_multiply=1):
         if act.is_restart:
             self.dm.stop_app()
             sleep(2)
@@ -73,17 +73,16 @@ class AutoBase:
                 if 0 <= how_many < cnt:
                     break
                 x, y = self.get_click_position(act, ret)
-                # self.log.add_log(f'click to x={x}, y={y}, how_many={how_many}')
-                self.dm.click(x=x, y=y, hold_duration_ms=act.duration_ms)
+                t = act.duration_ms * ( 1 + 0.80 * max(0, duration_multiply - 1) )
+                self.dm.click(x=x, y=y, hold_duration_ms=int(t))
 
-    def do_first_action(self, actions: List[Action], result: MatchingResult):
+    def do_first_action(self, actions: List[Action], result: MatchingResult, duration_multiply=1):
         for action in actions:
-            self.do_action(action, result, 1)
+            self.do_action(action, result, 1, duration_multiply=duration_multiply)
 
-    def do_all_actions(self, actions: List[Action], result: MatchingResult):
+    def do_all_actions(self, actions: List[Action], result: MatchingResult, duration_multiply=1):
         for action in actions:
-            self.do_action(action, result)
-            sleep(0.2)
+            self.do_action(action, result, duration_multiply=duration_multiply)
 
     def delete_images(self):
         img_path = self.capture_filepath().parent
@@ -94,7 +93,7 @@ class AutoBase:
     def screenshot(self, cnt = 1, delete=True):
         ret = []
         for _ in range(cnt):
-            sleep(1.1)
+            sleep(0.5)
             img_filepath1 = self.capture_filepath()
             self.dm.screenshot(img_filepath1)
             ret.append(Img(img_filepath1))
@@ -103,10 +102,10 @@ class AutoBase:
 
         self.img = tuple(ret)
 
-    @repeat_retry(repeat=10)
+    @repeat_retry(repeat=15)
     def _stop_google_ad(self):
 
-        sleep(10)
+        sleep(5)
         self.screenshot()
 
         actions, result = self.template.get_actions_google_ad_skip(self.img)

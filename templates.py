@@ -99,7 +99,7 @@ class TemplateManager:
             'templates': [
                 BASE_PATH / 'images' / 'templates' / 'factory_upgrade_gold_active.png',
             ],
-            'actions': [ Action.click_center(duration_ms=2550), ]
+            'actions': [ Action.click_center(duration_ms=3000), ]
         },
         BUY_FOOD_FACTORY_COIN: { # 파랑 배경에 코인 (업그레이드) or Open
             'templates': [
