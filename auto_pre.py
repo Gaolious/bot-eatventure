@@ -207,8 +207,15 @@ class AutoHelper(AutoBase):
     def adjust_factory_offset(self, open_box=False):
 
         self.log.add_log(f'\t[O] adjust_factory_offset current offset={self.curr_offset_y}, factory offset={self.curr_factory_offset}')
-        if self.curr_offset_y > self.curr_factory_offset:
-            self.init_screen_pos()
+        # if self.curr_offset_y > self.curr_factory_offset:
+        #     self.init_screen_pos()
+
+        while self.curr_offset_y > self.curr_factory_offset:
+            self.log.add_log(f'[adjust_factory_offset] : {self.curr_offset_y} -> {self.curr_offset_y+1} / Scroll Up')
+            self.curr_offset_y -= 1
+            self.dm.move_to_up_1step()
+            if open_box:
+                self.open_boxes()
 
         while self.curr_offset_y < self.curr_factory_offset:
             self.log.add_log(f'[adjust_factory_offset] : {self.curr_offset_y} -> {self.curr_offset_y+1} / Scroll Down')
@@ -312,9 +319,10 @@ class AutoHelper(AutoBase):
                 min_dist = d
                 tx, ty = x, y + 37  # distance between [center of arrow], [top of box] = 37
 
-        if min_dist >= 0 and min_dist < 400:
+        if min_dist >= 0 and min_dist < 500:
             self.log.add_log(f'\t[Adjust Factory Position] ({self.sx},{self.sy}) - ({self.ex},{self.ey}) / Arrow : ({tx},{ty})')
-            self.dm.swipe(self.sx, ty, self.sx, self.sy, 1000)
+            diff = 500 + ( abs(ty - self.sy)// 100 ) * 1000
+            self.dm.swipe(self.sx, ty, self.sx, self.sy, diff)
 
         self.log.add_log(f'\t[Adjust Factory Position] end')
 
@@ -338,14 +346,25 @@ class AutoHelper(AutoBase):
     def do_upgrade_factory_open(self, max_level, with_box_open, is_last, cnt):
         try:
             self.log.add_log(f'[do_upgrade_factory_open] / with_box_open={with_box_open}')
+
+            actions, result = self.template.get_actions_offline_earning_close_box(self.img)
+            if result:
+                self.do_all_actions(actions, result)
+                self.capture_filepath()
+
+            actions, result = self.template.get_actions_away_earn_close_box(self.img)
+            if result:
+                self.do_all_actions(actions, result)
+                self.capture_filepath()
+
             if with_box_open:
                 actions, result = self.template.get_actions_google_ad_timer(self.img)
                 if not result:
                     self.log.add_log('\t[O] Google adv')
                     # upgrade window off
                     self.watching_google_ad()
-                    self.init_screen_pos()
-                    self.adjust_factory_offset(with_box_open)
+                    # self.init_screen_pos()
+                    # self.adjust_factory_offset(with_box_open)
 
             if not self.click_factory(tobe_open=True):
                 self.log.add_log('\tExit. do_upgrade_factory_open / Not Found click_factory ')
@@ -398,7 +417,8 @@ class AutoHelper(AutoBase):
         self.check_init_dialog_box()
 
         self.screenshot()
-        self.check_new_stage_found_go_next_stage_button()
+        if self.check_new_stage_found_go_next_stage_button():
+            return True
 
         self.max_level, self.name = self.get_level_city()
 
@@ -434,33 +454,13 @@ class AutoHelper(AutoBase):
             cnt = [0]
             if not self.do_upgrade_factory_open(max_level=self.max_level, with_box_open=with_box_open, is_last=is_last, cnt=cnt):
                 self.log.add_log(f'Failed to do_upgrade_factory_open')
-                return
+                break
             if self.template.has_go_to_next_stage(self.img):
                 break
 
         # do upgrade every thing.
         if self.check_new_stage_found_go_next_stage_button():
             return True
-
-    @repeat_retry(repeat=2)
-    def _on_new_stage_intro_popup(self):
-        """
-        new stage - step 3.
-        :return:
-        """
-        sleep(1)
-        self.screenshot()
-        actions, result = self.template.get_actions_on_new_stage_intro2(self.img)
-        if result:
-            self.log.add_log('found [ON_NEW_STAGE_INTRO 2] and do actions')
-            self.do_first_action(actions, result)
-            raise ResetRepeatCountException()
-
-        actions, result = self.template.get_actions_on_new_stage_intro(self.img)
-        if result:
-            self.log.add_log('found [ON_NEW_STAGE_INTRO] and do actions')
-            self.do_first_action(actions, result)
-            raise ResetRepeatCountException()
 
     @repeat_retry(repeat=2)
     def _on_new_stage_buy_new_stage(self):
@@ -476,20 +476,16 @@ class AutoHelper(AutoBase):
             sleep(2)
             if self.max_level == 250:
                 sleep(5)
-
             raise ExitRepeatException()
 
     def check_new_stage_found_go_next_stage_button(self):
         self.screenshot()
         actions, result = self.template.get_actions_go_to_next_stage(self.img)
-        if actions:
+        if result:
             self.log.add_log('found [GO_TO_NEXT_STAGE] and do actions')
             self.do_first_action(actions, result)
 
-            if self._on_new_stage_buy_new_stage():
-                if self._on_new_stage_intro_popup():
-                    self.check_init_dialog_box()
-                    pass
+            self._on_new_stage_buy_new_stage()
             return True
 
     @repeat_retry(repeat=3)
@@ -518,7 +514,6 @@ class AutoHelper(AutoBase):
             else:
                 self.log.add_log(f'\t[X] {fn.__name__}')
 
-
         if self.template.has_setup_gear_menu(self.img):
             self.log.add_log(f'\t[O] has_setup_gear_menu')
             raise ExitRepeatException()
@@ -535,13 +530,13 @@ class AutoHelper(AutoBase):
         self.template.load_templates()
         self.city.load_cities()
 
-        while True:
-            work_path = self.log_filepath().parent
-            if work_path.exists():
+        while self.main_logic():
+            try:
+                work_path = self.log_filepath().parent
                 shutil.rmtree(work_path)
-                
-            if not self.main_logic():
-                break
+                self.log_filepath()
+            except:
+                pass
 
 
 if __name__ == '__main__':

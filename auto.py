@@ -11,13 +11,13 @@ if __name__ == '__main__':
         try:
             helper = PreAuto(package_name)
             helper.run()
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
         curr = curr + 1
         print(f'Current Run : {curr} - Scan Auto')
         try:
             helper = ScanAuto(package_name)
             helper.run()
-        except:
-            pass
+        except Exception as e:
+            print(e)

@@ -121,8 +121,8 @@ class AutoBase:
             raise ResetRepeatCountException()
 
         if self.template.has_google_ad_miss_click(self.img):
-            self.dm.press_back_button()
-            raise ExitRepeatException()
+            for _ in range(3):
+                self.dm.press_back_button()
 
         if self.template.has_setup_gear_menu(self.img):
             raise ExitRepeatException()

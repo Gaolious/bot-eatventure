@@ -125,9 +125,9 @@ class DeviceManager:
         sleep(0.5)
 
 
-    def move_to_down_1step(self):
+    def move_to_down_1step(self, duration_ms = 500):
         self.init_adb()
-        self.device.input_swipe(self.SCROLL_X_POS, self.SCROLL_MAX_Y_POS, self.SCROLL_X_POS, self.SCROLL_MAX_Y_POS - self.scroll_y_size, int(500))
+        self.device.input_swipe(self.SCROLL_X_POS, self.SCROLL_MAX_Y_POS, self.SCROLL_X_POS, self.SCROLL_MAX_Y_POS - self.scroll_y_size, int(duration_ms))
         sleep(1)
 
     def move_to_down_2step(self):
